@@ -1,8 +1,6 @@
 # 📝 Product Requirements Document (PRD): Task Orchestrator
 
 **Version:** 1.0  
-**Status:** Approved  
-**Author:** [Your Name] & AI Pair Programmer
 
 ## 1. Project Vision
 To build a high-performance, real-time task management platform (Kanban-style) that demonstrates professional-grade backend engineering, strict type-safety via gRPC, and seamless real-time user experiences.
