@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+package task;
+
+// The Task represents the CURRENT state of a task
+message Task {
+  string id = 1;
+  string project_id = 2;
+  string title = 3;
+  string description = 4;
+  string status = 5; 
+  string assignee_id = 6;
+  string creator_id = 7;
+  string task_number = 8;
+  string created_at = 9;
+  string updated_at = 10; // Added to track the last time ANY field changed
+}
+
+// NEW: The TaskHistoryEntry represents a single "event" in the task's life
+message TaskHistoryEntry {
+  string id = 1;
+  string task_id = 2;
+  string changed_by_user_id = 3;
+  string old_status = 4;
+  string new_status = 5;
+  string timestamp = 6;
+}
+
+// A list of history entries for a specific task
+message TaskHistoryList {
+  repeated TaskHistoryEntry entries = 1;
+}
+
+// --- Existing Request/Response Messages ---
+
+message CreateTaskRequest {
+  string project_id = 1;
+  string title = 2;
+  string description = 3;
+}
+
+message UpdateStatusRequest {
+  string task_id = 1;
+  string new_status = 2;
+}
+
+message TaskFilter {
+  string status = 1;
+  string assignee_id = 2;
+  string project_id = 3;
+  string team_id = 4;
+  string search_query = 5;
+}
+
+message TaskList {
+  repeated Task tasks = 1;
+}
+
+message Empty {}
+
+// --- The TaskService ---
+
+service TaskService {
+  rpc CreateTask(CreateTaskRequest) returns (Task);
+  rpc UpdateTaskStatus(UpdateStatusRequest) returns (Task);
+  rpc ListTasks(TaskFilter) returns (TaskList);
+  rpc DeleteTask(string) returns (Empty);
+
+  // NEW: Method to retrieve the audit log for a task (for SLA/History views)
+  rpc GetTaskHistory(string) returns (TaskHistoryList); 
+}

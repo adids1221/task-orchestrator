@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package auth;
+
+// The message sent when a user wants to login
+message LoginRequest {
+  string email = 1;
+  string password = 2;
+}
+
+// The message sent when a user wants to register
+message RegisterRequest {
+  string email = 1;
+  string password = 2;
+  string name = 3;
+  string last_name = 4;
+}
+
+// The response after a successful auth action
+message AuthResponse {
+  string token = 1;
+  string user_id = 2;
+  string email = 3;
+  string name = 4;
+}
+
+// The AuthService defines the "Routes" (Methods)
+service AuthService {
+  rpc Login(LoginRequest) returns (AuthResponse);
+  rpc Register(RegisterRequest) returns (AuthResponse);
+}
