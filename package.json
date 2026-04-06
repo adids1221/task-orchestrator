@@ -7,8 +7,16 @@
     "packages/*"
   ],
   "scripts": {
+    "generate": "protoc --plugin=protoc-gen-ts_proto=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_out=packages/generated --ts_proto_opt=outputServices=grpc-js,env=import,esModuleInterop=true packages/proto/*.proto",
     "dev:frontend": "npm run dev -w apps/frontend",
     "dev:backend": "npm run dev -w apps/backend",
     "build": "npm run build --workspaces"
+  },
+  "devDependencies": {
+    "ts-proto": "^1.167.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@grpc/grpc-js": "^1.14.3"
   }
 }

@@ -13,10 +13,10 @@ message Task {
   string creator_id = 7;
   string task_number = 8;
   string created_at = 9;
-  string updated_at = 10; // Added to track the last time ANY field changed
+  string updated_at = 10; 
 }
 
-// NEW: The TaskHistoryEntry represents a single "event" in the task's life
+// The history of status changes
 message TaskHistoryEntry {
   string id = 1;
   string task_id = 2;
@@ -26,12 +26,11 @@ message TaskHistoryEntry {
   string timestamp = 6;
 }
 
-// A list of history entries for a specific task
 message TaskHistoryList {
   repeated TaskHistoryEntry entries = 1;
 }
 
-// --- Existing Request/Response Messages ---
+// --- Request/Response Messages ---
 
 message CreateTaskRequest {
   string project_id = 1;
@@ -56,6 +55,16 @@ message TaskList {
   repeated Task tasks = 1;
 }
 
+// NEW: Wrapper for DeleteTask
+message DeleteTaskRequest {
+  string task_id = 1;
+}
+
+// NEW: Wrapper for GetTaskHistory
+message GetTaskHistoryRequest {
+  string task_id = 1;
+}
+
 message Empty {}
 
 // --- The TaskService ---
@@ -64,8 +73,8 @@ service TaskService {
   rpc CreateTask(CreateTaskRequest) returns (Task);
   rpc UpdateTaskStatus(UpdateStatusRequest) returns (Task);
   rpc ListTasks(TaskFilter) returns (TaskList);
-  rpc DeleteTask(string) returns (Empty);
-
-  // NEW: Method to retrieve the audit log for a task (for SLA/History views)
-  rpc GetTaskHistory(string) returns (TaskHistoryList); 
+  
+  // UPDATED: Now using messages instead of raw strings
+  rpc DeleteTask(DeleteTaskRequest) returns (Empty);
+  rpc GetTaskHistory(GetTaskHistoryRequest) returns (TaskHistoryList);
 }
