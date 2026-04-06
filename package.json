@@ -1,0 +1,14 @@
+{
+  "name": "task-orchestrator",
+  "private": true,
+  "description": "Monorepo for Task Orchestrator",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:frontend": "npm run dev -w apps/frontend",
+    "dev:backend": "npm run dev -w apps/backend",
+    "build": "npm run build --workspaces"
+  }
+}
