@@ -12,7 +12,8 @@
     "allowJs": true,
     "resolveJsonModule": true,
     // Silence those specific deprecation warnings
-    "ignoreDeprecations": "6.0"
+    "ignoreDeprecations": "6.0",
+    "types": ["node", "jest"]
   },
   "include": [
     "src/**/*.ts", 

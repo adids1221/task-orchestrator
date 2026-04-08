@@ -17,6 +17,7 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "@grpc/grpc-js": "^1.14.3"
+    "@grpc/grpc-js": "^1.14.3",
+    "bcrypt": "^6.0.0"
   }
 }
