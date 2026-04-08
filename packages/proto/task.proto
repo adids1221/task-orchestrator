@@ -43,6 +43,13 @@ message UpdateStatusRequest {
   string new_status = 2;
 }
 
+message UpdateTaskRequest {
+  string task_id = 1;
+  optional string title = 2;
+  optional string description = 3;
+  optional string assignee_id = 4;
+}
+
 message TaskFilter {
   string status = 1;
   string assignee_id = 2;
@@ -72,6 +79,7 @@ message Empty {}
 service TaskService {
   rpc CreateTask(CreateTaskRequest) returns (Task);
   rpc UpdateTaskStatus(UpdateStatusRequest) returns (Task);
+  rpc UpdateTask(UpdateTaskRequest) returns (Task);
   rpc ListTasks(TaskFilter) returns (TaskList);
   
   // UPDATED: Now using messages instead of raw strings

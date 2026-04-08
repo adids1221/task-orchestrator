@@ -1,21 +1,38 @@
 import * as grpc from "@grpc/grpc-js";
-import { type TaskServiceServer } from "../../../../packages/generated/task";
-import { getAuthorizedUserId, respondWithGrpcError, handleServiceError } from "../utils";
+import { type TaskServiceServer } from "../grpc/contracts";
+import {
+  respondWithGrpcError,
+  handleServiceError,
+  mapTaskToResponse,
+  requireUserId,
+} from "../utils";
 import prisma from "../db";
-import { TASK_STATUS } from "../constants/taskStatus";
+import { TASK_STATUS } from "../constants";
 
-const requireUserId = (
-  metadata: grpc.Metadata,
+const findOwnedTask = async (
+  taskId: string,
+  userId: string,
   callback: (err: { code: number; message: string }) => void,
-): string | null => {
-  const userId = getAuthorizedUserId(metadata);
+) => {
+  const task = await prisma.task.findUnique({
+    where: { id: taskId },
+  });
 
-  if (!userId) {
-    respondWithGrpcError(callback, grpc.status.UNAUTHENTICATED, "Unauthorized");
+  if (!task) {
+    respondWithGrpcError(callback, grpc.status.NOT_FOUND, "Task not found");
     return null;
   }
 
-  return userId;
+  if (task.creatorId !== userId) {
+    respondWithGrpcError(
+      callback,
+      grpc.status.PERMISSION_DENIED,
+      "You can only update your own tasks",
+    );
+    return null;
+  }
+
+  return task;
 };
 
 export const taskHandler: TaskServiceServer = {
@@ -45,19 +62,7 @@ export const taskHandler: TaskServiceServer = {
         },
       });
 
-      // Return task response
-      callback(null, {
-        id: task.id,
-        projectId: task.projectId,
-        title: task.title,
-        description: task.description || "",
-        status: task.status,
-        assigneeId: task.assigneeId || "",
-        creatorId: task.creatorId,
-        taskNumber: task.taskNumber,
-        createdAt: task.createdAt.toISOString(),
-        updatedAt: task.updatedAt.toISOString(),
-      });
+      callback(null, mapTaskToResponse(task));
     } catch (error) {
       handleServiceError(error, callback, "Failed to create task");
     }
@@ -69,25 +74,8 @@ export const taskHandler: TaskServiceServer = {
 
       const { taskId, newStatus } = call.request;
 
-      // Find task
-      const task = await prisma.task.findUnique({
-        where: { id: taskId },
-      });
-
-      if (!task) {
-        respondWithGrpcError(callback, grpc.status.NOT_FOUND, "Task not found");
-        return;
-      }
-
-      // Check ownership
-      if (task.creatorId !== userId) {
-        respondWithGrpcError(
-          callback,
-          grpc.status.PERMISSION_DENIED,
-          "You can only update your own tasks"
-        );
-        return;
-      }
+      const task = await findOwnedTask(taskId, userId, callback);
+      if (!task) return;
 
       // Update task status and create history entry
       const updatedTask = await prisma.task.update({
@@ -108,21 +96,99 @@ export const taskHandler: TaskServiceServer = {
         },
       });
 
-      // Return updated task
-      callback(null, {
-        id: updatedTask.id,
-        projectId: updatedTask.projectId,
-        title: updatedTask.title,
-        description: updatedTask.description || "",
-        status: updatedTask.status,
-        assigneeId: updatedTask.assigneeId || "",
-        creatorId: updatedTask.creatorId,
-        taskNumber: updatedTask.taskNumber,
-        createdAt: updatedTask.createdAt.toISOString(),
-        updatedAt: updatedTask.updatedAt.toISOString(),
-      });
+      callback(null, mapTaskToResponse(updatedTask));
     } catch (error) {
       handleServiceError(error, callback, "Failed to update task status");
+    }
+  },
+  updateTask: async (call, callback) => {
+    try {
+      const userId = requireUserId(call.metadata, callback);
+      if (!userId) return;
+
+      const { taskId, title, description, assigneeId } = call.request;
+
+      if (!taskId) {
+        respondWithGrpcError(
+          callback,
+          grpc.status.INVALID_ARGUMENT,
+          "taskId is required",
+        );
+        return;
+      }
+
+      const hasTitle = title !== undefined;
+      const hasDescription = description !== undefined;
+      const hasAssigneeId = assigneeId !== undefined;
+
+      if (!hasTitle && !hasDescription && !hasAssigneeId) {
+        respondWithGrpcError(
+          callback,
+          grpc.status.INVALID_ARGUMENT,
+          "At least one field must be provided: title, description, assigneeId",
+        );
+        return;
+      }
+
+      const task = await findOwnedTask(taskId, userId, callback);
+      if (!task) return;
+
+      const updateData: {
+        title?: string;
+        description?: string | null;
+        assigneeId?: string | null;
+      } = {};
+
+      let hasChanges = false;
+
+      const changes: Record<
+        string,
+        { from: string | null; to: string | null }
+      > = {};
+
+      if (hasTitle && title !== task.title) {
+        updateData.title = title;
+        changes.title = { from: task.title, to: title };
+        hasChanges = true;
+      }
+
+      if (hasDescription && description !== task.description) {
+        updateData.description = description || null;
+        changes.description = {
+          from: task.description,
+          to: description || null,
+        };
+        hasChanges = true;
+      }
+
+      if (hasAssigneeId && assigneeId !== task.assigneeId) {
+        updateData.assigneeId = assigneeId || null;
+        changes.assigneeId = { from: task.assigneeId, to: assigneeId || null };
+        hasChanges = true;
+      }
+
+      if (!hasChanges) {
+        callback(null, mapTaskToResponse(task));
+        return;
+      }
+
+      const updatedTask = await prisma.task.update({
+        where: { id: taskId },
+        data: updateData,
+      });
+
+      await prisma.taskAuditLog.create({
+        data: {
+          taskId,
+          performedBy: userId,
+          action: "TASK_UPDATED",
+          changes,
+        },
+      });
+
+      callback(null, mapTaskToResponse(updatedTask));
+    } catch (error) {
+      handleServiceError(error, callback, "Failed to update task");
     }
   },
   listTasks: (_call, callback) => {

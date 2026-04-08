@@ -35,6 +35,7 @@ model Task {
   creatorId   String
   creator     User     @relation(fields: [creatorId], references: [id])
   history     TaskHistory[]
+  auditLogs   TaskAuditLog[]
 }
 
 model TaskHistory {
@@ -45,4 +46,14 @@ model TaskHistory {
   changedAt       DateTime @default(now())
   changedByUserId String
   task            Task     @relation(fields: [taskId], references: [id])
+}
+
+model TaskAuditLog {
+  id          String   @id @default(uuid())
+  taskId      String
+  action      String @default("TASK_UPDATED")
+  performedAt DateTime @default(now())
+  performedBy String
+  changes     Json
+  task        Task     @relation(fields: [taskId], references: [id])
 }

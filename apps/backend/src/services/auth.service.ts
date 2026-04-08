@@ -8,7 +8,7 @@ import {
   hashPassword,
   respondWithGrpcError,
 } from "../utils";
-import { type AuthServiceServer } from "../../../../packages/generated/auth";
+import { type AuthServiceServer } from "../grpc/contracts";
 
 export const authHandler: AuthServiceServer = {
   login: async (call, callback) => {
