@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "CommonJS",
+    "lib": ["ES2020"],
+    "outDir": "./dist",
+    "rootDir": "../..",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "moduleResolution": "node", 
+    "allowJs": true,
+    "resolveJsonModule": true,
+    // Silence those specific deprecation warnings
+    "ignoreDeprecations": "6.0"
+  },
+  "include": [
+    "src/**/*.ts", 
+    "../../packages/generated/**/*.ts"
+  ],
+  "exclude": ["node_modules"]
+}
