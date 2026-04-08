@@ -2,8 +2,10 @@ import { Prisma } from "@prisma/client";
 import * as grpc from "@grpc/grpc-js";
 import prisma from "../../db";
 import {
-  authUtils,
+  comparePassword,
+  generateAuthToken,
   handleServiceError,
+  hashPassword,
   respondWithGrpcError,
 } from "../../utils";
 import { authHandler } from "../auth.service";
@@ -20,11 +22,9 @@ jest.mock("../../db", () => ({
 
 jest.mock("../../utils", () => ({
   __esModule: true,
-  authUtils: {
-    comparePassword: jest.fn(),
-    generateAuthToken: jest.fn(),
-    hashPassword: jest.fn(),
-  },
+  comparePassword: jest.fn(),
+  generateAuthToken: jest.fn(),
+  hashPassword: jest.fn(),
   respondWithGrpcError: jest.fn(),
   handleServiceError: jest.fn(),
 }));
@@ -75,8 +75,8 @@ describe("authService", () => {
         name: "Ada",
         password: "hashed",
       });
-      (authUtils.comparePassword as jest.Mock).mockResolvedValue(true);
-      (authUtils.generateAuthToken as jest.Mock).mockReturnValue("jwt-token");
+      (comparePassword as jest.Mock).mockResolvedValue(true);
+      (generateAuthToken as jest.Mock).mockReturnValue("jwt-token");
       const callback = jest.fn();
 
       await authHandler.login(
@@ -114,7 +114,7 @@ describe("authService", () => {
 
     it("returns ALREADY_EXISTS on Prisma P2002 during register", async () => {
       prismaMock.user.findUnique.mockResolvedValue(null);
-      (authUtils.hashPassword as jest.Mock).mockResolvedValue("hashed");
+      (hashPassword as jest.Mock).mockResolvedValue("hashed");
 
       const p2002Error = Object.create(
         Prisma.PrismaClientKnownRequestError.prototype,

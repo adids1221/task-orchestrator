@@ -1,7 +1,13 @@
 import { Prisma } from "@prisma/client";
 import * as grpc from "@grpc/grpc-js";
 import prisma from "../db";
-import { authUtils, handleServiceError, respondWithGrpcError } from "../utils";
+import {
+  comparePassword,
+  generateAuthToken,
+  handleServiceError,
+  hashPassword,
+  respondWithGrpcError,
+} from "../utils";
 import { type AuthServiceServer } from "../../../../packages/generated/auth";
 
 export const authHandler: AuthServiceServer = {
@@ -19,7 +25,7 @@ export const authHandler: AuthServiceServer = {
         return;
       }
 
-      const passwordMatch = await authUtils.comparePassword(
+      const passwordMatch = await comparePassword(
         password,
         user.password,
       );
@@ -33,7 +39,7 @@ export const authHandler: AuthServiceServer = {
         return;
       }
 
-      const token = authUtils.generateAuthToken(user.id, user.email);
+      const token = generateAuthToken(user.id, user.email);
 
       callback(null, {
         token,
@@ -69,13 +75,13 @@ export const authHandler: AuthServiceServer = {
         return;
       }
 
-      const hashedPassword = await authUtils.hashPassword(password);
+      const hashedPassword = await hashPassword(password);
 
       const newUser = await prisma.user.create({
         data: { email, password: hashedPassword, name, lastName },
       });
 
-      const token = authUtils.generateAuthToken(newUser.id, newUser.email);
+      const token = generateAuthToken(newUser.id, newUser.email);
 
       callback(null, {
         token,

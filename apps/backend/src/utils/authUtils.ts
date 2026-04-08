@@ -7,7 +7,7 @@ export const generateAuthToken = (id: string, email: string): string => {
   if (!secret) {
     throw new Error("JWT secret is not configured");
   }
-  const token = jwt.sign({ id, email }, secret, {
+  const token = jwt.sign({ userId: id, email }, secret, {
     expiresIn: "10d",
   });
   return token;

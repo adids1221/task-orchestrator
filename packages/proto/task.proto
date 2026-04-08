@@ -23,7 +23,7 @@ message TaskHistoryEntry {
   string changed_by_user_id = 3;
   string old_status = 4;
   string new_status = 5;
-  string timestamp = 6;
+  string changed_at = 6;
 }
 
 message TaskHistoryList {

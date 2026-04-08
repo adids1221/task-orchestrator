@@ -1,2 +1,10 @@
-export * as authUtils from "./authUtils";
-export { handleServiceError, respondWithGrpcError } from "./grpcUtils";
+export {
+	comparePassword,
+	generateAuthToken,
+	hashPassword,
+} from "./authUtils";
+export {
+	getAuthorizedUserId,
+	handleServiceError,
+	respondWithGrpcError,
+} from "./grpcUtils";

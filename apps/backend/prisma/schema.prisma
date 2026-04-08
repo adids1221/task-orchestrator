@@ -24,12 +24,14 @@ model User {
 model Task {
   id          String   @id @default(uuid())
   title       String
+  projectId   String
+  assigneeId  String?
   description String?
   status      String   @default("TODO")
   taskNumber  String   @unique
-  createdAt         DateTime @default(now()) // This is your "Initial Timestamp"
-  lastStatusChange  DateTime @default(now()) // When the current status started
-  updatedAt         DateTime @updatedAt      // Auto-updates on any change
+  createdAt         DateTime @default(now())
+  lastStatusChange  DateTime @default(now()) 
+  updatedAt         DateTime @updatedAt
   creatorId   String
   creator     User     @relation(fields: [creatorId], references: [id])
   history     TaskHistory[]
@@ -41,5 +43,6 @@ model TaskHistory {
   oldStatus       String
   newStatus       String
   changedAt       DateTime @default(now())
+  changedByUserId String
   task            Task     @relation(fields: [taskId], references: [id])
 }
