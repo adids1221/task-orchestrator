@@ -1,0 +1,35 @@
+:root {
+  --color-bg: #f4f7fb;
+  --color-surface: #ffffff;
+  --color-surface-alt: #eef3fb;
+  --color-text: #18212f;
+  --color-text-muted: #5f6f85;
+  --color-primary: #1660f3;
+  --color-primary-hover: #0f4fcf;
+  --color-border: #d9e2ef;
+  --color-danger: #c03d3d;
+  --shadow-sm: 0 8px 30px rgba(15, 35, 66, 0.08);
+  --radius-md: 12px;
+  --radius-lg: 18px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+}
+
+body {
+  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+  background: radial-gradient(circle at 10% 10%, #e9f1ff, var(--color-bg));
+  color: var(--color-text);
+}
+
+a {
+  color: inherit;
+}
