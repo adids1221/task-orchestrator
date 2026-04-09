@@ -2,6 +2,7 @@ import * as grpc from "@grpc/grpc-js";
 import prisma from "../../db";
 import {
   handleServiceError,
+  mapTaskHistoryToResponse,
   mapTaskToResponse,
   requireUserId,
   respondWithGrpcError,
@@ -12,17 +13,23 @@ import { taskHandler } from "../task.service";
 jest.mock("../../db", () => ({
   __esModule: true,
   default: {
+    $transaction: jest.fn(),
     task: {
       count: jest.fn(),
       create: jest.fn(),
+      findMany: jest.fn(),
       findUnique: jest.fn(),
       update: jest.fn(),
+      delete: jest.fn(),
     },
     taskHistory: {
       create: jest.fn(),
+      findMany: jest.fn(),
+      deleteMany: jest.fn(),
     },
     taskAuditLog: {
       create: jest.fn(),
+      deleteMany: jest.fn(),
     },
   },
 }));
@@ -33,20 +40,27 @@ jest.mock("../../utils", () => ({
   handleServiceError: jest.fn(),
   requireUserId: jest.fn(),
   mapTaskToResponse: jest.fn(),
+  mapTaskHistoryToResponse: jest.fn(),
 }));
 
 type MockedPrisma = {
+  $transaction: jest.Mock;
   task: {
     count: jest.Mock;
     create: jest.Mock;
+    findMany: jest.Mock;
     findUnique: jest.Mock;
     update: jest.Mock;
+    delete: jest.Mock;
   };
   taskHistory: {
     create: jest.Mock;
+    findMany: jest.Mock;
+    deleteMany: jest.Mock;
   };
   taskAuditLog: {
     create: jest.Mock;
+    deleteMany: jest.Mock;
   };
 };
 
@@ -214,6 +228,107 @@ describe("taskService", () => {
       );
       expect(prismaMock.task.update).not.toHaveBeenCalled();
       expect(prismaMock.taskHistory.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("listTasks", () => {
+    it("returns mapped tasks for the current user", async () => {
+      (requireUserId as jest.Mock).mockReturnValue("u1");
+      prismaMock.task.findMany.mockResolvedValue([
+        {
+          id: "t1",
+          projectId: "proj-acme",
+          title: "Fix login",
+          description: "desc",
+          status: TASK_STATUS.TODO,
+          assigneeId: null,
+          creatorId: "u1",
+          taskNumber: "proj-acme-001",
+          createdAt: new Date("2026-01-01T00:00:00.000Z"),
+          updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+        },
+      ]);
+      (mapTaskToResponse as jest.Mock).mockReturnValue({ id: "t1" });
+      const callback = jest.fn();
+
+      await taskHandler.listTasks(
+        {
+          metadata: {} as grpc.Metadata,
+          request: {},
+        } as any,
+        callback as any,
+      );
+
+      expect(prismaMock.task.findMany).toHaveBeenCalledWith({
+        where: { creatorId: "u1" },
+      });
+      expect(callback).toHaveBeenCalledWith(null, { tasks: [{ id: "t1" }] });
+    });
+  });
+
+  describe("deleteTask", () => {
+    it("deletes task when user owns it", async () => {
+      (requireUserId as jest.Mock).mockReturnValue("u1");
+      prismaMock.task.findUnique.mockResolvedValue({
+        id: "t1",
+        creatorId: "u1",
+      });
+      prismaMock.$transaction.mockResolvedValue([]);
+      const callback = jest.fn();
+
+      await taskHandler.deleteTask(
+        {
+          metadata: {} as grpc.Metadata,
+          request: { taskId: "t1" },
+        } as any,
+        callback as any,
+      );
+
+      expect(prismaMock.taskHistory.deleteMany).toHaveBeenCalledWith({
+        where: { taskId: "t1" },
+      });
+      expect(prismaMock.taskAuditLog.deleteMany).toHaveBeenCalledWith({
+        where: { taskId: "t1" },
+      });
+      expect(prismaMock.task.delete).toHaveBeenCalledWith({ where: { id: "t1" } });
+      expect(prismaMock.$transaction).toHaveBeenCalledTimes(1);
+      expect(callback).toHaveBeenCalledWith(null, {});
+    });
+  });
+
+  describe("getTaskHistory", () => {
+    it("returns mapped task history entries", async () => {
+      (requireUserId as jest.Mock).mockReturnValue("u1");
+      prismaMock.task.findUnique.mockResolvedValue({
+        id: "t1",
+        creatorId: "u1",
+      });
+      prismaMock.taskHistory.findMany.mockResolvedValue([
+        {
+          id: "h1",
+          taskId: "t1",
+          changedByUserId: "u1",
+          oldStatus: TASK_STATUS.TODO,
+          newStatus: TASK_STATUS.IN_PROGRESS,
+          changedAt: new Date("2026-01-01T00:00:00.000Z"),
+        },
+      ]);
+      (mapTaskHistoryToResponse as jest.Mock).mockReturnValue({ id: "h1" });
+      const callback = jest.fn();
+
+      await taskHandler.getTaskHistory(
+        {
+          metadata: {} as grpc.Metadata,
+          request: { taskId: "t1" },
+        } as any,
+        callback as any,
+      );
+
+      expect(prismaMock.taskHistory.findMany).toHaveBeenCalledWith({
+        where: { taskId: "t1" },
+        orderBy: { changedAt: "desc" },
+      });
+      expect(callback).toHaveBeenCalledWith(null, { entries: [{ id: "h1" }] });
     });
   });
 });

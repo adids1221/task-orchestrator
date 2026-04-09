@@ -4,10 +4,13 @@ import {
   respondWithGrpcError,
   handleServiceError,
   mapTaskToResponse,
+  mapTaskHistoryToResponse,
   requireUserId,
 } from "../utils";
 import prisma from "../db";
 import { TASK_STATUS } from "../constants";
+
+const VALID_TASK_STATUSES = new Set(Object.values(TASK_STATUS));
 
 const findOwnedTask = async (
   taskId: string,
@@ -43,6 +46,24 @@ export const taskHandler: TaskServiceServer = {
 
       const { projectId, title, description } = call.request;
 
+      if (!projectId || !projectId.trim()) {
+        respondWithGrpcError(
+          callback,
+          grpc.status.INVALID_ARGUMENT,
+          "projectId is required",
+        );
+        return;
+      }
+
+      if (!title || !title.trim()) {
+        respondWithGrpcError(
+          callback,
+          grpc.status.INVALID_ARGUMENT,
+          "title is required",
+        );
+        return;
+      }
+
       // Count existing tasks in project to generate taskNumber
       const taskCount = await prisma.task.count({
         where: { projectId },
@@ -73,6 +94,37 @@ export const taskHandler: TaskServiceServer = {
       if (!userId) return;
 
       const { taskId, newStatus } = call.request;
+
+      if (!taskId || !taskId.trim()) {
+        respondWithGrpcError(
+          callback,
+          grpc.status.INVALID_ARGUMENT,
+          "taskId is required",
+        );
+        return;
+      }
+
+      if (!newStatus || !newStatus.trim()) {
+        respondWithGrpcError(
+          callback,
+          grpc.status.INVALID_ARGUMENT,
+          "newStatus is required",
+        );
+        return;
+      }
+
+      if (
+        !VALID_TASK_STATUSES.has(
+          newStatus as (typeof TASK_STATUS)[keyof typeof TASK_STATUS],
+        )
+      ) {
+        respondWithGrpcError(
+          callback,
+          grpc.status.INVALID_ARGUMENT,
+          `Invalid status: ${newStatus}`,
+        );
+        return;
+      }
 
       const task = await findOwnedTask(taskId, userId, callback);
       if (!task) return;
@@ -191,13 +243,76 @@ export const taskHandler: TaskServiceServer = {
       handleServiceError(error, callback, "Failed to update task");
     }
   },
-  listTasks: (_call, callback) => {
-    callback(null, { tasks: [] });
+  listTasks: async (call, callback) => {
+    try {
+      const userId = requireUserId(call.metadata, callback);
+      if (!userId) return;
+
+      const userTasks = await prisma.task.findMany({
+        where: { creatorId: userId },
+      });
+
+      callback(null, { tasks: userTasks.map(mapTaskToResponse) });
+    } catch (error) {
+      handleServiceError(error, callback, "Failed to list tasks");
+    }
   },
-  deleteTask: (_call, callback) => {
-    callback(null, {});
+  deleteTask: async (call, callback) => {
+    try {
+      const userId = requireUserId(call.metadata, callback);
+      if (!userId) return;
+
+      const { taskId } = call.request;
+
+      if (!taskId || !taskId.trim()) {
+        respondWithGrpcError(
+          callback,
+          grpc.status.INVALID_ARGUMENT,
+          "taskId is required",
+        );
+        return;
+      }
+
+      const task = await findOwnedTask(taskId, userId, callback);
+      if (!task) return;
+
+      await prisma.$transaction([
+        prisma.taskHistory.deleteMany({ where: { taskId } }),
+        prisma.taskAuditLog.deleteMany({ where: { taskId } }),
+        prisma.task.delete({ where: { id: taskId } }),
+      ]);
+
+      callback(null, {});
+    } catch (error) {
+      handleServiceError(error, callback, "Failed to delete task");
+    }
   },
-  getTaskHistory: (_call, callback) => {
-    callback(null, { entries: [] });
+  getTaskHistory: async (call, callback) => {
+    try {
+      const userId = requireUserId(call.metadata, callback);
+      if (!userId) return;
+
+      const { taskId } = call.request;
+
+      if (!taskId || !taskId.trim()) {
+        respondWithGrpcError(
+          callback,
+          grpc.status.INVALID_ARGUMENT,
+          "taskId is required",
+        );
+        return;
+      }
+
+      const task = await findOwnedTask(taskId, userId, callback);
+      if (!task) return;
+      
+      const historyEntries = await prisma.taskHistory.findMany({
+        where: { taskId },
+        orderBy: { changedAt: "desc" },
+      });
+      callback(null, { entries: historyEntries.map(mapTaskHistoryToResponse) });
+    } catch (error) {
+      handleServiceError(error, callback, "Failed to get task history");
+    }
   },
 };

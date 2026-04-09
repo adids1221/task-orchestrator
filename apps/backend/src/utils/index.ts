@@ -4,4 +4,8 @@ export {
   handleServiceError,
   respondWithGrpcError,
 } from "./grpcUtils";
-export { mapTaskToResponse, requireUserId } from "./taskUtils";
+export {
+  mapTaskToResponse,
+  mapTaskHistoryToResponse,
+  requireUserId,
+} from "./taskUtils";

@@ -1,5 +1,8 @@
 import * as grpc from "@grpc/grpc-js";
-import { PrismaTask } from "@prisma/client";
+import type {
+  Task as PrismaTask,
+  TaskHistory as PrismaTaskHistory,
+} from "@prisma/client";
 import { getAuthorizedUserId, respondWithGrpcError } from "./grpcUtils";
 
 export const requireUserId = (
@@ -27,4 +30,13 @@ export const mapTaskToResponse = (task: PrismaTask) => ({
   taskNumber: task.taskNumber,
   createdAt: task.createdAt.toISOString(),
   updatedAt: task.updatedAt.toISOString(),
+});
+
+export const mapTaskHistoryToResponse = (entry: PrismaTaskHistory) => ({
+  id: entry.id,
+  taskId: entry.taskId,
+  changedByUserId: entry.changedByUserId,
+  oldStatus: entry.oldStatus,
+  newStatus: entry.newStatus,
+  changedAt: entry.changedAt.toISOString(),
 });
