@@ -1,10 +1,12 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { loginUser } from "@/lib/features/auth/login-client";
 import styles from "./page.module.css";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -25,8 +27,7 @@ export default function LoginPage() {
       return;
     }
 
-    alert(`Welcome ${result.data.user.name || "back"}`);
-    setIsSubmitting(false);
+    router.replace("/tasks");
   };
 
   return (

@@ -1,10 +1,12 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { registerUser } from "@/lib/features/auth/register-client";
 import styles from "./page.module.css";
 
 export default function RegisterPage() {
+  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -34,8 +36,7 @@ export default function RegisterPage() {
       return;
     }
 
-    alert(`Welcome ${result.data.user.name || "onboard"}`);
-    setIsSubmitting(false);
+    router.replace("/tasks");
   };
 
   return (
