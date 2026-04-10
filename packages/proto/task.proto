@@ -30,6 +30,13 @@ message TaskHistoryList {
   repeated TaskHistoryEntry entries = 1;
 }
 
+message Project {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string creator_id = 4;
+}
+
 // --- Request/Response Messages ---
 
 message CreateTaskRequest {
@@ -62,6 +69,10 @@ message TaskList {
   repeated Task tasks = 1;
 }
 
+message ProjectList {
+  repeated Project projects = 1;
+}
+
 // NEW: Wrapper for DeleteTask
 message DeleteTaskRequest {
   string task_id = 1;
@@ -72,6 +83,13 @@ message GetTaskHistoryRequest {
   string task_id = 1;
 }
 
+message CreateProjectRequest {
+  string name = 1;
+  string description = 2;
+}
+
+message ListProjectsRequest {}
+
 message Empty {}
 
 // --- The TaskService ---
@@ -81,6 +99,9 @@ service TaskService {
   rpc UpdateTaskStatus(UpdateStatusRequest) returns (Task);
   rpc UpdateTask(UpdateTaskRequest) returns (Task);
   rpc ListTasks(TaskFilter) returns (TaskList);
+  rpc CreateProject(CreateProjectRequest) returns (Project);
+  rpc ListProjects(ListProjectsRequest) returns (ProjectList);
+
   
   // UPDATED: Now using messages instead of raw strings
   rpc DeleteTask(DeleteTaskRequest) returns (Empty);

@@ -1,5 +1,4 @@
 import { Metadata } from "@grpc/grpc-js";
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import type {
   CreateTaskRequest,
@@ -9,6 +8,11 @@ import type {
   UpdateStatusRequest,
 } from "../../../../../packages/generated/packages/proto/task";
 import { taskClient } from "@/lib/server/grpc-clients";
+import {
+  buildAuthMetadata,
+  mapGrpcErrorToHttp,
+  readStringField,
+} from "@/app/api/_utils/grpc-route-utils";
 
 export const runtime = "nodejs";
 
@@ -57,86 +61,6 @@ function updateTaskStatus(
   });
 }
 
-function mapGrpcErrorToHttp(error: unknown): {
-  status: number;
-  message: string;
-} {
-  const fallback = {
-    status: 502,
-    message: error instanceof Error ? error.message : "Task service error",
-  };
-
-  if (!error || typeof error !== "object") {
-    return fallback;
-  }
-
-  const maybeCode = (error as { code?: unknown }).code;
-  const message =
-    (error as { message?: unknown }).message &&
-    typeof (error as { message?: unknown }).message === "string"
-      ? ((error as { message: string }).message as string)
-      : fallback.message;
-
-  switch (maybeCode) {
-    case 3:
-      return { status: 400, message };
-    case 5:
-      return { status: 404, message };
-    case 7:
-      return { status: 403, message };
-    case 16:
-      return { status: 401, message };
-    default:
-      return { status: 502, message };
-  }
-}
-
-function getBearerTokenFromHeader(value: string | null): string | null {
-  if (!value) {
-    return null;
-  }
-
-  if (!value.startsWith("Bearer ")) {
-    return null;
-  }
-
-  const token = value.slice("Bearer ".length).trim();
-  return token || null;
-}
-
-async function buildAuthMetadata(request: Request): Promise<Metadata | null> {
-  const authHeaderToken = getBearerTokenFromHeader(
-    request.headers.get("authorization"),
-  );
-
-  const cookieStore = await cookies();
-  const cookieToken = cookieStore.get("auth_token")?.value;
-  const token = authHeaderToken || cookieToken;
-
-  if (!token) {
-    return null;
-  }
-
-  const metadata = new Metadata();
-  metadata.set("authorization", `Bearer ${token}`);
-  return metadata;
-}
-
-function readStringField(body: unknown, ...keys: string[]): string {
-  if (!body || typeof body !== "object") {
-    return "";
-  }
-
-  for (const key of keys) {
-    const value = (body as Record<string, unknown>)[key];
-    if (typeof value === "string") {
-      return value.trim();
-    }
-  }
-
-  return "";
-}
-
 export async function GET(request: Request) {
   const metadata = await buildAuthMetadata(request);
   if (!metadata) {
@@ -157,7 +81,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ tasks: response.tasks }, { status: 200 });
   } catch (error) {
-    const mapped = mapGrpcErrorToHttp(error);
+    const mapped = mapGrpcErrorToHttp(error, "Task service error");
     console.error("[api/tasks] listTasks failed", error);
     return NextResponse.json(
       { error: mapped.message },
@@ -192,7 +116,7 @@ export async function POST(request: Request) {
     const task = await createTask({ projectId, title, description }, metadata);
     return NextResponse.json({ task }, { status: 201 });
   } catch (error) {
-    const mapped = mapGrpcErrorToHttp(error);
+    const mapped = mapGrpcErrorToHttp(error, "Task service error");
     console.error("[api/tasks] createTask failed", error);
     return NextResponse.json(
       { error: mapped.message },
@@ -226,7 +150,7 @@ export async function PATCH(request: Request) {
     const task = await updateTaskStatus({ taskId, newStatus }, metadata);
     return NextResponse.json({ task }, { status: 200 });
   } catch (error) {
-    const mapped = mapGrpcErrorToHttp(error);
+    const mapped = mapGrpcErrorToHttp(error, "Task service error");
     console.error("[api/tasks] updateTaskStatus failed", error);
     return NextResponse.json(
       { error: mapped.message },

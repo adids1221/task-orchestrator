@@ -8,7 +8,7 @@ import {
   respondWithGrpcError,
 } from "../../utils";
 import { TASK_STATUS } from "../../constants";
-import { taskHandler } from "../task.service";
+import { taskHandler } from "../index";
 
 jest.mock("../../db", () => ({
   __esModule: true,
@@ -21,6 +21,11 @@ jest.mock("../../db", () => ({
       findUnique: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
+    },
+    project: {
+      create: jest.fn(),
+      findMany: jest.fn(),
+      findFirst: jest.fn(),
     },
     taskHistory: {
       create: jest.fn(),
@@ -52,6 +57,11 @@ type MockedPrisma = {
     findUnique: jest.Mock;
     update: jest.Mock;
     delete: jest.Mock;
+  };
+  project: {
+    create: jest.Mock;
+    findMany: jest.Mock;
+    findFirst: jest.Mock;
   };
   taskHistory: {
     create: jest.Mock;
@@ -94,6 +104,10 @@ describe("taskService", () => {
 
     it("creates a task with generated per-project task number", async () => {
       (requireUserId as jest.Mock).mockReturnValue("u1");
+      prismaMock.project.findFirst.mockResolvedValue({
+        id: "proj-acme",
+        creatorId: "u1",
+      });
       prismaMock.task.count.mockResolvedValue(0);
 
       const createdTask = {

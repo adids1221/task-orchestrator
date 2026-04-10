@@ -19,6 +19,7 @@ model User {
   lastName  String
   createdAt DateTime @default(now())
   tasks     Task[]
+  projects  Project[]
 }
 
 model Task {
@@ -34,6 +35,7 @@ model Task {
   updatedAt         DateTime @updatedAt
   creatorId   String
   creator     User     @relation(fields: [creatorId], references: [id])
+  project     Project  @relation(fields: [projectId], references: [id])
   history     TaskHistory[]
   auditLogs   TaskAuditLog[]
 }
@@ -56,4 +58,14 @@ model TaskAuditLog {
   performedBy String
   changes     Json
   task        Task     @relation(fields: [taskId], references: [id])
+}
+
+model Project {
+  id          String   @id @default(uuid())
+  creatorId   String
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  creator     User     @relation(fields: [creatorId], references: [id])
+  tasks       Task[]
 }
